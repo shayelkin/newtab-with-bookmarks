@@ -3,6 +3,8 @@
 A New Tab page for Chrome that displays the Bookmarks Bar's bookmarks, similar to Safari's default
 new tab page.
 
+![A screenshot of Chrome displaying a new tab page as rendered by the extension](screenshot.png)
+
 ## Install
 
 This extension is not published to the Chrome Web Store, and need to be installed as an unpacked
