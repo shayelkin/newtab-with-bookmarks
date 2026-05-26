@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Bookmarks New Tab Page",
+  "version": "1.0.0",
+  "description": "Replaces the new tab page with a grid of bookmark bar icons.",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": ["bookmarks", "favicon"]
+}
