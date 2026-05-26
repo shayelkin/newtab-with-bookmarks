@@ -2,6 +2,13 @@
 const BOOKMARKS_BAR_ID = "1";
 const FAVICON_SIZE = 64;
 
+function setDefaultFavicon() {
+  const link = document.createElement("link");
+  link.rel = "icon";
+  link.href = faviconUrl("about:blank");
+  document.head.appendChild(link);
+}
+
 function faviconUrl(pageUrl) {
   const url = new URL(chrome.runtime.getURL("/_favicon/"));
   url.searchParams.set("pageUrl", pageUrl);
@@ -68,7 +75,26 @@ async function render() {
   }
 }
 
+setDefaultFavicon();
 render();
+
+const manage = document.querySelector(".manage");
+function openManage(inNewTab) {
+  if (inNewTab) {
+    chrome.tabs.create({ url: "chrome://bookmarks/" });
+  } else {
+    chrome.tabs.update({ url: "chrome://bookmarks/" });
+  }
+}
+manage?.addEventListener("click", (event) => {
+  event.preventDefault();
+  openManage(event.metaKey || event.ctrlKey || event.shiftKey);
+});
+manage?.addEventListener("auxclick", (event) => {
+  if (event.button !== 1) return;
+  event.preventDefault();
+  openManage(true);
+});
 
 for (const event of ["onCreated", "onRemoved", "onChanged", "onMoved", "onChildrenReordered"]) {
   chrome.bookmarks[event]?.addListener(() => render());
