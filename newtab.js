@@ -24,9 +24,23 @@ function faviconUrl(pageUrl) {
   return url.toString();
 }
 
+// Heuristic for hostnames under a second-level TLD (like "foo.co.uk")
+const SECOND_LEVEL_TLDS = new Set([
+  "co", "com", "org", "net", "gov", "edu", "ac", "or", "ne", "go",
+]);
+
 function initialFor(node) {
-  const source = (node.title || node.url || "?").trim();
-  return source.charAt(0) || "?";
+  if (node.title) return node.title.trim().charAt(0) || "?";
+  if (!node.url) return "?";
+  try {
+    // Strip subdomains
+    const parts = new URL(node.url).hostname.split(".");
+    const tldParts = parts.length >= 3 && SECOND_LEVEL_TLDS.has(parts[parts.length - 2]) ? 2 : 1;
+    const domain = parts[parts.length - tldParts - 1] ?? parts[0];
+    return domain.charAt(0) || "?";
+  } catch {
+    return "?";
+  }
 }
 
 function buildIcon(node) {

@@ -81,7 +81,6 @@ html, body {
   font-size: 28px;
   font-weight: 600;
   color: var(--fg);
-  text-transform: uppercase;
 }
 
 .label {
