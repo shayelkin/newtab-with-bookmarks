@@ -9,6 +9,17 @@
 <body>
   <main id="grid" class="grid"></main>
   <a class="manage" href="chrome://bookmarks/">Manage bookmarks</a>
+  <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title" hidden>
+    <div class="overlay-backdrop"></div>
+    <div class="overlay-panel">
+      <header class="overlay-header">
+        <button class="overlay-back" type="button" aria-label="Back" hidden>&larr;</button>
+        <h2 id="overlay-title" class="overlay-title"></h2>
+        <button class="overlay-close" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div class="overlay-grid"></div>
+    </div>
+  </div>
   <script src="newtab.js"></script>
 </body>
 </html>

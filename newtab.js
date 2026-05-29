@@ -2,6 +2,14 @@
 const BOOKMARKS_BAR_ID = "1";
 const FAVICON_SIZE = 64;
 
+// Chrome blocks navigating to href="chrome://...". Workaround by opening them as a
+// this page with the target as the fragment, then using chrome.tabs.update() to redirect.
+const fragmentTarget = location.hash.slice(1);
+if (fragmentTarget.startsWith("chrome://")) {
+  chrome.tabs.update({ url: fragmentTarget });
+}
+
+// Get Chrome's default favicon (the globe) to be used for this page.
 function setDefaultFavicon() {
   const link = document.createElement("link");
   link.rel = "icon";
@@ -46,12 +54,12 @@ function buildIcon(node) {
 function buildTile(node) {
   const tile = document.createElement("a");
   tile.className = "tile";
-  if (!node.url) tile.classList.add("folder");
 
   if (node.url) {
     tile.href = node.url;
   } else {
-    tile.href = `chrome://bookmarks/?id=${encodeURIComponent(node.id)}`;
+    tile.classList.add("folder");
+    bindChromeLink(tile, `chrome://bookmarks/?id=${encodeURIComponent(node.id)}`, () => openFolder(node.id));
   }
 
   tile.appendChild(buildIcon(node));
@@ -64,38 +72,96 @@ function buildTile(node) {
   return tile;
 }
 
+// Wires up a link to a chrome:// URL.
+// if onPlainClick is specified it'll intercept clicks (for opening folders, etc).
+function bindChromeLink(element, url, onPlainClick) {
+  element.href = `#${url}`;
+  element.addEventListener("click", (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    if (onPlainClick) {
+      onPlainClick();
+    } else {
+      chrome.tabs.update({ url });
+    }
+  });
+}
+
 async function render() {
   const grid = document.getElementById("grid");
   grid.replaceChildren();
 
   const [bar] = await chrome.bookmarks.getSubTree(BOOKMARKS_BAR_ID);
   const children = bar?.children ?? [];
-  for (const node of children) {
-    grid.appendChild(buildTile(node));
-  }
+  children.forEach((node) => grid.appendChild(buildTile(node)));
+
+  if (!overlay.hidden) renderOverlay();
 }
+
+const overlay = document.querySelector(".overlay");
+const overlayTitle = overlay.querySelector(".overlay-title");
+const overlayGrid = overlay.querySelector(".overlay-grid");
+const overlayBack = overlay.querySelector(".overlay-back");
+let folderStack = [];
+
+// Folder navigation is driven by the History API so the browser back button works.
+async function openFolder(id) {
+  folderStack.push(id);
+  history.pushState({ folderStack: [...folderStack] }, "");
+  await renderOverlay();
+}
+
+async function renderOverlay() {
+  if (folderStack.length === 0) return;
+  const id = folderStack[folderStack.length - 1];
+  let folder;
+  try {
+    [folder] = await chrome.bookmarks.getSubTree(id);
+  } catch {
+    return closeOverlay();
+  }
+  if (!folder) {
+    return closeOverlay();
+  }
+  overlayTitle.textContent = folder.title || "Folder";
+  overlayBack.hidden = folderStack.length <= 1;
+  overlayGrid.replaceChildren();
+  for (const child of folder.children ?? []) {
+    overlayGrid.appendChild(buildTile(child));
+  }
+  overlay.hidden = false;
+}
+
+function closeOverlay() {
+  if (folderStack.length > 0) history.go(-folderStack.length);
+  else overlay.hidden = true;
+}
+
+overlayBack.addEventListener("click", () => history.back());
+
+overlay.querySelector(".overlay-close").addEventListener("click", closeOverlay);
+overlay.querySelector(".overlay-backdrop").addEventListener("click", closeOverlay);
+
+document.addEventListener("keydown", (event) => {
+  if (overlay.hidden) return;
+  if (event.key === "Escape") closeOverlay();
+});
+
+window.addEventListener("popstate", (event) => {
+  folderStack = event.state?.folderStack ? [...event.state.folderStack] : [];
+  if (folderStack.length === 0) {
+    overlay.hidden = true;
+  } else {
+    renderOverlay();
+  }
+});
 
 setDefaultFavicon();
 render();
 
 const manage = document.querySelector(".manage");
-function openManage(inNewTab) {
-  if (inNewTab) {
-    chrome.tabs.create({ url: "chrome://bookmarks/" });
-  } else {
-    chrome.tabs.update({ url: "chrome://bookmarks/" });
-  }
-}
-manage?.addEventListener("click", (event) => {
-  event.preventDefault();
-  openManage(event.metaKey || event.ctrlKey || event.shiftKey);
-});
-manage?.addEventListener("auxclick", (event) => {
-  if (event.button !== 1) return;
-  event.preventDefault();
-  openManage(true);
-});
+if (manage) bindChromeLink(manage, "chrome://bookmarks/");
 
 for (const event of ["onCreated", "onRemoved", "onChanged", "onMoved", "onChildrenReordered"]) {
-  chrome.bookmarks[event]?.addListener(() => render());
+  chrome.bookmarks[event]?.addListener(render);
 }
