@@ -8,7 +8,31 @@
 </head>
 <body>
   <main id="grid" class="grid"></main>
-  <a class="manage" href="chrome://bookmarks/">Manage bookmarks</a>
+
+  <section id="agenda" class="agenda" hidden>
+    <header class="agenda-header">
+      <h2 class="agenda-title">Today</h2>
+    </header>
+    <ul class="agenda-list"></ul>
+    <p class="agenda-status"></p>
+  </section>
+
+  <dialog id="agenda-dialog" class="agenda-dialog">
+    <form method="dialog" class="agenda-form">
+      <h2 class="agenda-form-title">Calendars</h2>
+      <p class="agenda-hint">One iCal (.ics) URL per line. Use the "secret address in iCal format" from your calendar's settings.</p>
+      <textarea class="agenda-urls" rows="6" spellcheck="false" placeholder="https://calendar.google.com/calendar/ical/&hellip;/basic.ics"></textarea>
+      <div class="agenda-actions">
+        <button value="cancel" type="submit" class="agenda-btn agenda-cancel">Cancel</button>
+        <button value="save" type="submit" class="agenda-btn agenda-save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="footer">
+    <a class="manage" href="chrome://bookmarks/">Manage bookmarks</a>
+    <button class="agenda-settings" type="button">Configure calendars</button>
+  </footer>
   <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title" hidden>
     <div class="overlay-backdrop"></div>
     <div class="overlay-panel">
@@ -21,5 +45,6 @@
     </div>
   </div>
   <script src="newtab.js"></script>
+  <script src="agenda.js"></script>
 </body>
 </html>

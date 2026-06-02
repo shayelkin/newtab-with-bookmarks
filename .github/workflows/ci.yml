@@ -25,5 +25,8 @@ jobs:
             node --input-type=module --check < "$f"
           done
 
+      - name: Run tests
+        run: node --test
+
       - name: Validate Chrome MV3 manifest
         run: uv tool run check-jsonschema --schemafile https://json.schemastore.org/chrome-manifest.json manifest.json
