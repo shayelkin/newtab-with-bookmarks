@@ -51,6 +51,7 @@ function buildIcon(node) {
 
   const img = document.createElement("img");
   img.alt = "";
+  img.draggable = false;
   img.loading = "lazy";
   img.referrerPolicy = "no-referrer";
   img.src = faviconUrl(node.url);
@@ -68,6 +69,8 @@ function buildIcon(node) {
 function buildTile(node) {
   const tile = document.createElement("a");
   tile.className = "tile";
+  tile.draggable = false;
+  tile.dataset.id = node.id;
 
   if (node.url) {
     tile.href = node.url;
@@ -169,6 +172,114 @@ window.addEventListener("popstate", (event) => {
     renderOverlay();
   }
 });
+
+const DRAG_THRESHOLD = 5;
+let drag = null;
+
+// Drag-to-reorder. Pointer-based so links keep behaving as links.
+function enableReorder(container) {
+  container.addEventListener("pointerdown", (event) => onPointerDown(event, container));
+}
+
+function onPointerDown(event, container) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+  const tile = event.target.closest(".tile");
+  if (!tile || !tile.dataset.id) return;
+  drag = {
+    tile,
+    container,
+    startX: event.clientX,
+    startY: event.clientY,
+    startIndex: [...container.children].filter((el) => el.dataset?.id).indexOf(tile),
+    started: false,
+  };
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("pointercancel", onPointerUp);
+}
+
+function onPointerMove(event) {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < DRAG_THRESHOLD) return;
+    beginDrag();
+  }
+  const { tile, container, placeholder, offsetX, offsetY } = drag;
+  tile.style.left = `${event.clientX - offsetX}px`;
+  tile.style.top = `${event.clientY - offsetY}px`;
+  container.insertBefore(placeholder, insertionPoint(event.clientX, event.clientY));
+}
+
+// The tile the placeholder should sit before, in reading order, or null if cursor
+// is past the last tile.
+// Scanning geometry rather than the element under the cursor lets drops land in
+// the empty space after the grid.
+function insertionPoint(x, y) {
+  const tiles = [...drag.container.children].filter(
+    (el) => el.classList.contains("tile") && el !== drag.tile,
+  );
+  for (const t of tiles) {
+    const r = t.getBoundingClientRect();
+    if (y < r.top) return t;
+    if (y <= r.bottom && x < r.left + r.width / 2) return t;
+  }
+  return null;
+}
+
+function beginDrag() {
+  const { tile, container } = drag;
+  const r = tile.getBoundingClientRect();
+  drag.offsetX = drag.startX - r.left;
+  drag.offsetY = drag.startY - r.top;
+  drag.started = true;
+
+  const placeholder = document.createElement("div");
+  placeholder.className = "drag-placeholder";
+  placeholder.style.width = `${r.width}px`;
+  placeholder.style.height = `${r.height}px`;
+  container.insertBefore(placeholder, tile);
+  drag.placeholder = placeholder;
+
+  tile.classList.add("dragging");
+  tile.style.width = `${r.width}px`;
+  tile.style.height = `${r.height}px`;
+  tile.style.left = `${r.left}px`;
+  tile.style.top = `${r.top}px`;
+  document.body.classList.add("dragging-active");
+}
+
+function onPointerUp() {
+  window.removeEventListener("pointermove", onPointerMove);
+  window.removeEventListener("pointerup", onPointerUp);
+  window.removeEventListener("pointercancel", onPointerUp);
+  if (!drag) return;
+  const { tile, container, placeholder, started, startIndex } = drag;
+  drag = null;
+  if (!started) return;
+
+  container.insertBefore(tile, placeholder);
+  placeholder.remove();
+  tile.classList.remove("dragging");
+  ["left", "top", "width", "height"].forEach((p) => tile.style.removeProperty(p));
+  document.body.classList.remove("dragging-active");
+
+  // Swallow the click that the browser fires on the link after pointerup.
+  tile.addEventListener("click", suppressClick, { capture: true, once: true });
+
+  // Chrome resolves the destination index against the children list *before*
+  // the node is removed, so a downward move within the same folder needs +1.
+  const siblings = [...container.children].filter((el) => el.dataset?.id);
+  const newIndex = siblings.indexOf(tile);
+  chrome.bookmarks.move(tile.dataset.id, { index: newIndex > startIndex ? newIndex + 1 : newIndex });
+}
+
+function suppressClick(event) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
+enableReorder(document.getElementById("grid"));
+enableReorder(overlayGrid);
 
 setDefaultFavicon();
 render();

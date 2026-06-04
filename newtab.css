@@ -54,6 +54,31 @@ html, body {
 }
 
 .tile:hover { background: var(--tile-bg-hover); }
+
+.tile img { -webkit-user-drag: none; user-select: none; }
+
+.tile.dragging {
+  position: fixed;
+  z-index: 200;
+  margin: 0;
+  pointer-events: none;
+  opacity: 0.9;
+  transform: scale(1.05);
+  background: var(--tile-bg-hover);
+  box-shadow: 0 12px 32px var(--tile-shadow);
+}
+
+.drag-placeholder {
+  border-radius: 12px;
+  background: var(--tile-bg);
+  opacity: 0.5;
+  outline: 2px dashed var(--tile-bg-hover);
+}
+
+body.dragging-active {
+  user-select: none;
+  cursor: grabbing;
+}
 .tile:focus-visible {
   outline: 2px solid #1a73e8;
   outline-offset: 2px;
