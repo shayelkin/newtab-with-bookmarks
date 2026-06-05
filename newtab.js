@@ -106,11 +106,15 @@ function bindChromeLink(element, url, onPlainClick) {
 
 async function render() {
   const grid = document.getElementById("grid");
-  grid.replaceChildren();
 
+  // Build into a fragment and swap in one shot. Clearing before the await would
+  // let concurrent renders (many events fire on a sync) each clear then append,
+  // duplicating tiles.
   const [bar] = await chrome.bookmarks.getSubTree(BOOKMARKS_BAR_ID);
   const children = bar?.children ?? [];
-  children.forEach((node) => grid.appendChild(buildTile(node)));
+  const fragment = document.createDocumentFragment();
+  children.forEach((node) => fragment.appendChild(buildTile(node)));
+  grid.replaceChildren(fragment);
 
   if (!overlay.hidden) renderOverlay();
 }
