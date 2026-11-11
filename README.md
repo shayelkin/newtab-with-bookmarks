@@ -16,6 +16,12 @@ extension:
    (top-right toggle).
 3. Click **Load unpacked** and select the location you placed the extension code in.
 
+## Acknowledging AI Use
+
+This software was written with assistance from the following AI models:
+
+- Claude Opus 4.7 (Anthropic)
+
 ## License
 
 This software is licensed under the terms of the [MIT license](LICENSE).
